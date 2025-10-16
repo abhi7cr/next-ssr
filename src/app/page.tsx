@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-console.log("foo\r bar");
+console.log("foo\nbar");
 
 export default function Home() {
   return (
