@@ -1,6 +1,11 @@
 import Image from "next/image";
 
+const foo = {
+  bar: 1,
+  baz: "2"
+}
 console.log("foo\nbar");
+console.log(foo);
 
 export default function Home() {
   return (
