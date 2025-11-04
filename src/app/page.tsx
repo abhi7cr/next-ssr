@@ -7,6 +7,7 @@ const foo = {
 console.log("foo\nbar");
 console.log(JSON.stringify(foo, undefined, 2));
 console.log(JSON.stringify(foo));
+JSON.stringify(foo, null, 2).split('\n').forEach(line => console.log(line));
 console.log(foo);
 
 export default function Home() {
