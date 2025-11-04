@@ -5,6 +5,7 @@ const foo = {
   baz: "2"
 }
 console.log("foo\nbar");
+console.log(JSON.stringify(foo, undefined, 2));
 console.log(JSON.stringify(foo));
 console.log(foo);
 
