@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "@omega-next-adapter",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
