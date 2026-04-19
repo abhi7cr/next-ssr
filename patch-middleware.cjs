@@ -19,9 +19,7 @@ if (!Number.isInteger(port) || port < 1) {
 const healthPath = "/__omega_middleware_health";
 let handler = null;
 
-const loading = import("./handler.mjs").then((m) => {
-  handler = m.default;
-});
+import("./handler.mjs").then((m) => { handler = m.default; });
 
 const server = http.createServer((req, res) => {
   const urlPath = (req.url ?? "/").split("?")[0];
@@ -32,7 +30,10 @@ const server = http.createServer((req, res) => {
   }
   void (async () => {
     try {
-      await loading;
+      if (!handler) {
+        const m = await import("./handler.mjs");
+        handler = m.default;
+      }
       const headers = new Headers();
       for (const [key, value] of Object.entries(req.headers)) {
         if (value === undefined) continue;
@@ -67,13 +68,8 @@ const server = http.createServer((req, res) => {
   })();
 });
 
-await new Promise((resolve, reject) => {
-  server.once("error", reject);
-  server.listen(port, host, () => {
-    server.removeListener("error", reject);
-    process.stdout.write(\`[middleware] listening on \${host}:\${server.address()?.port ?? port}\\n\`);
-    resolve();
-  });
+server.listen(port, host, () => {
+  process.stdout.write(\`[middleware] listening on \${host}:\${server.address()?.port ?? port}\\n\`);
 });
 `);
 
