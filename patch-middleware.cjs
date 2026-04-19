@@ -41,6 +41,11 @@ if (fs.existsSync(middlewarePath)) {
 
 // Replace index.js with direct port binding
 fs.writeFileSync(indexPath, `import http from "node:http";
+import { AsyncLocalStorage } from "node:async_hooks";
+
+if (!globalThis.__openNextAls) {
+  globalThis.__openNextAls = new AsyncLocalStorage();
+}
 
 const port = Number(process.env.PORT || process.env.AWS_LAMBDA_HTTP_ENDPOINT?.split(":").pop() || 3000);
 const host = process.env.HOSTNAME || process.env.AWS_LAMBDA_HTTP_ENDPOINT?.split(":")[0] || "0.0.0.0";
