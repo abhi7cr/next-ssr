@@ -4,12 +4,42 @@ const path = require("path");
 
 const mwDir = path.join(__dirname, ".omega", "compute", "middleware");
 const indexPath = path.join(mwDir, "index.js");
+const middlewarePath = path.join(mwDir, "middleware.mjs");
 
 if (!fs.existsSync(path.join(mwDir, "server.mjs"))) {
   console.log("No middleware server.mjs found, skipping patch.");
   process.exit(0);
 }
 
+// Patch middleware.mjs: fix the spread that loses Request.url
+if (fs.existsSync(middlewarePath)) {
+  let mw = fs.readFileSync(middlewarePath, "utf8");
+  // Replace {...request, page: ...} with explicit url/headers/method + page
+  const old = `request: {
+      ...request,
+      page: {
+        name: correspondingRoute.name
+      }
+    }`;
+  const fixed = `request: {
+      url: request.url,
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+      page: {
+        name: correspondingRoute.name
+      }
+    }`;
+  if (mw.includes(old)) {
+    mw = mw.replace(old, fixed);
+    fs.writeFileSync(middlewarePath, mw);
+    console.log("Patched middleware.mjs — fixed Request spread.");
+  } else {
+    console.log("WARNING: Could not find spread pattern in middleware.mjs to patch.");
+  }
+}
+
+// Replace index.js with direct port binding
 fs.writeFileSync(indexPath, `import http from "node:http";
 
 const port = Number(process.env.PORT || process.env.AWS_LAMBDA_HTTP_ENDPOINT?.split(":").pop() || 3000);
@@ -44,8 +74,6 @@ const server = http.createServer((req, res) => {
         }
       }
       const request = new Request(url, { method: req.method ?? "GET", headers });
-      // Ensure .url survives spreading inside middleware.mjs edgeFunctionHandler
-      Object.defineProperty(request, "url", { value: url, enumerable: true });
       const response = await handler(request);
       const headerMap = {};
       const setCookies = typeof response.headers.getSetCookie === "function" ? response.headers.getSetCookie() : [];
@@ -70,4 +98,4 @@ server.listen(port, host, () => {
 });
 `);
 
-console.log("Patched middleware index.js — direct port binding with enumerable url.");
+console.log("Patched middleware index.js — direct port binding.");
