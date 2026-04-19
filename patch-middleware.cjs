@@ -39,15 +39,8 @@ if (fs.existsSync(middlewarePath)) {
   }
 }
 
-// Patch handler.mjs: fix header format (remove extra "header-" segment)
-const handlerPath = path.join(mwDir, "handler.mjs");
-if (fs.existsSync(handlerPath)) {
-  let hjs = fs.readFileSync(handlerPath, "utf8");
-  hjs = hjs.replaceAll("x-omega-middleware-req-header-", "x-omega-middleware-req-");
-  hjs = hjs.replaceAll("x-omega-middleware-res-header-", "x-omega-middleware-res-");
-  fs.writeFileSync(handlerPath, hjs);
-  console.log("Patched handler.mjs — fixed header format.");
-}
+// Note: handler.mjs header format (x-omega-middleware-res-header-{seq}-...)
+// is correct per platform spec. Do not modify.
 
 // Replace index.js with direct port binding
 fs.writeFileSync(indexPath, `import http from "node:http";
