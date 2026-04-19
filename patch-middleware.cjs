@@ -3,15 +3,13 @@ const fs = require("fs");
 const path = require("path");
 
 const mwDir = path.join(__dirname, ".omega", "compute", "middleware");
-const serverPath = path.join(mwDir, "server.mjs");
 const indexPath = path.join(mwDir, "index.js");
 
-if (!fs.existsSync(serverPath)) {
+if (!fs.existsSync(path.join(mwDir, "server.mjs"))) {
   console.log("No middleware server.mjs found, skipping patch.");
   process.exit(0);
 }
 
-// Replace index.js entirely — bind port immediately, skip the proxy overhead
 fs.writeFileSync(indexPath, `import http from "node:http";
 
 const port = Number(process.env.PORT || process.env.AWS_LAMBDA_HTTP_ENDPOINT?.split(":").pop() || 3000);
@@ -33,6 +31,9 @@ const server = http.createServer((req, res) => {
         const m = await import("./handler.mjs");
         handler = m.default;
       }
+      const proto = req.headers["x-forwarded-proto"] ?? "http";
+      const reqHost = req.headers.host ?? "localhost";
+      const url = \`\${proto}://\${reqHost}\${req.url ?? "/"}\`;
       const headers = new Headers();
       for (const [key, value] of Object.entries(req.headers)) {
         if (value === undefined) continue;
@@ -42,12 +43,9 @@ const server = http.createServer((req, res) => {
           headers.set(key, value);
         }
       }
-      const proto = req.headers["x-forwarded-proto"] ?? "http";
-      const reqHost = req.headers.host ?? "localhost";
-      const request = new Request(\`\${proto}://\${reqHost}\${req.url ?? "/"}\`, {
-        method: req.method ?? "GET",
-        headers,
-      });
+      const request = new Request(url, { method: req.method ?? "GET", headers });
+      // Ensure .url survives spreading inside middleware.mjs edgeFunctionHandler
+      Object.defineProperty(request, "url", { value: url, enumerable: true });
       const response = await handler(request);
       const headerMap = {};
       const setCookies = typeof response.headers.getSetCookie === "function" ? response.headers.getSetCookie() : [];
@@ -72,4 +70,4 @@ server.listen(port, host, () => {
 });
 `);
 
-console.log("Patched middleware index.js — direct port binding, no proxy.");
+console.log("Patched middleware index.js — direct port binding with enumerable url.");
