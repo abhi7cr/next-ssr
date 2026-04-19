@@ -39,8 +39,27 @@ if (fs.existsSync(middlewarePath)) {
   }
 }
 
-// Note: handler.mjs header format (x-omega-middleware-res-header-{seq}-...)
-// is correct per platform spec. Do not modify.
+// Patch handler.mjs: fix header format order
+// Adapter outputs: x-omega-middleware-{req|res}-header-{seq}-{op}-{key}
+// Platform expects: x-omega-middleware-{req|res}-{seq}-header-{op}-{key}
+const handlerPath = path.join(mwDir, "handler.mjs");
+if (fs.existsSync(handlerPath)) {
+  let hjs = fs.readFileSync(handlerPath, "utf8");
+  hjs = hjs.replace(
+    /`x-omega-middleware-req-header-\$\{seq\}-\$\{op\}-\$\{key\}`/g,
+    '`x-omega-middleware-req-${seq}-header-${op}-${key}`'
+  );
+  hjs = hjs.replace(
+    /`x-omega-middleware-res-header-\$\{seq\}-\$\{op\}-\$\{key\}`/g,
+    '`x-omega-middleware-res-${seq}-header-${op}-${key}`'
+  );
+  hjs = hjs.replace(
+    /`x-omega-middleware-res-header-\$\{seq\}-append-Set-Cookie`/g,
+    '`x-omega-middleware-res-${seq}-header-append-Set-Cookie`'
+  );
+  fs.writeFileSync(handlerPath, hjs);
+  console.log("Patched handler.mjs — fixed header format order.");
+}
 
 // Replace index.js with direct port binding
 fs.writeFileSync(indexPath, `import http from "node:http";
