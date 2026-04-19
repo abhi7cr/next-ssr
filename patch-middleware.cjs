@@ -2,24 +2,23 @@
 const fs = require("fs");
 const path = require("path");
 
-const serverPath = path.join(__dirname, ".omega", "compute", "middleware", "server.mjs");
+const mwDir = path.join(__dirname, ".omega", "compute", "middleware");
+const serverPath = path.join(mwDir, "server.mjs");
+const indexPath = path.join(mwDir, "index.js");
+
 if (!fs.existsSync(serverPath)) {
   console.log("No middleware server.mjs found, skipping patch.");
   process.exit(0);
 }
 
-fs.writeFileSync(serverPath, `import http from "node:http";
+// Replace index.js entirely — bind port immediately, skip the proxy overhead
+fs.writeFileSync(indexPath, `import http from "node:http";
 
-const port = Number(process.env.PORT);
-const host = process.env.HOSTNAME ?? "0.0.0.0";
-if (!Number.isInteger(port) || port < 1) {
-  throw new Error("[middleware] PORT env var not set to a valid integer: " + String(process.env.PORT));
-}
+const port = Number(process.env.PORT || process.env.AWS_LAMBDA_HTTP_ENDPOINT?.split(":").pop() || 3000);
+const host = process.env.HOSTNAME || process.env.AWS_LAMBDA_HTTP_ENDPOINT?.split(":")[0] || "0.0.0.0";
 
 const healthPath = "/__omega_middleware_health";
 let handler = null;
-
-import("./handler.mjs").then((m) => { handler = m.default; });
 
 const server = http.createServer((req, res) => {
   const urlPath = (req.url ?? "/").split("?")[0];
@@ -73,4 +72,4 @@ server.listen(port, host, () => {
 });
 `);
 
-console.log("Patched middleware server.mjs with lazy-loading handler.");
+console.log("Patched middleware index.js — direct port binding, no proxy.");
